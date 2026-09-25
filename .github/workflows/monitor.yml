@@ -1,0 +1,44 @@
+name: vatican-monitor
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # every 5 min (GitHub may run it late or skip runs when busy)
+  workflow_dispatch:         # allows a manual "Run workflow" button for testing
+
+concurrency:
+  group: vatican-monitor
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # Runners start empty, so carry state.json/log.csv between runs via the Actions cache.
+      # The newest cache matching the prefix is restored.
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            state.json
+            log.csv
+          key: monitor-state-${{ github.run_id }}
+          restore-keys: monitor-state-
+
+      - name: Check availability
+        run: python3 monitor.py
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+
+      - name: Show recent log
+        if: always()
+        run: tail -n 5 log.csv || true
+
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: |
+            state.json
+            log.csv
+          key: monitor-state-${{ github.run_id }}-${{ github.run_attempt }}

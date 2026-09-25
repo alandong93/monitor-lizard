@@ -1,0 +1,9 @@
+ntfy_topic.txt
+state.json
+log.csv
+*.log
+last_error.txt
+last_response.json
+response_*.json
+__pycache__/
+*.plist
