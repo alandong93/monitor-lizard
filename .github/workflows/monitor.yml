@@ -14,11 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Runners start empty, so carry state.json/log.csv between runs via the Actions cache.
       # The newest cache matching the prefix is restored.
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v5
         with:
           path: |
             state.json
@@ -35,7 +35,7 @@ jobs:
         if: always()
         run: tail -n 5 log.csv || true
 
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v5
         if: always()
         with:
           path: |
