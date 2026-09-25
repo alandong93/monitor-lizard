@@ -4,6 +4,15 @@ on:
   schedule:
     - cron: "*/5 * * * *"   # every 5 min (GitHub may run it late or skip runs when busy)
   workflow_dispatch:         # allows a manual "Run workflow" button for testing
+    inputs:
+      adults:
+        description: "TEST ONLY: override number of adults (leave blank for a normal check)"
+        required: false
+        default: ""
+      date:
+        description: "TEST ONLY: override date, YYYY-MM-DD (leave blank for a normal check)"
+        required: false
+        default: ""
 
 concurrency:
   group: vatican-monitor
@@ -12,6 +21,9 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      # Test runs (any override set) skip the saved state so they can't disturb the real monitor
+      TEST_RUN: ${{ inputs.adults != '' || inputs.date != '' }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
@@ -19,6 +31,7 @@ jobs:
       # Runners start empty, so carry state.json/log.csv between runs via the Actions cache.
       # The newest cache matching the prefix is restored.
       - uses: actions/cache/restore@v5
+        if: env.TEST_RUN == 'false'
         with:
           path: |
             state.json
@@ -30,13 +43,15 @@ jobs:
         run: python3 monitor.py
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          MONITOR_ADULTS: ${{ inputs.adults }}
+          MONITOR_DATE: ${{ inputs.date }}
 
       - name: Show recent log
         if: always()
         run: tail -n 5 log.csv || true
 
       - uses: actions/cache/save@v5
-        if: always()
+        if: always() && env.TEST_RUN == 'false'
         with:
           path: |
             state.json

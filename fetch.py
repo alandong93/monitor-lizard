@@ -1,5 +1,6 @@
 """Fetch GetYourGuide availability for the Vatican Highlights tour and save the raw response."""
 import json
+import os
 from datetime import date as date_cls, timedelta
 import urllib.error
 import urllib.request
@@ -7,8 +8,9 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 URL = "https://travelers-api.getyourguide.com/user-interface/activity-details-page/blocks"
-DATE = "2026-10-05"
-ADULTS = 2
+# MONITOR_DATE / MONITOR_ADULTS env vars override these (used for test runs on GitHub)
+DATE = os.environ.get("MONITOR_DATE") or "2026-10-05"
+ADULTS = int(os.environ.get("MONITOR_ADULTS") or 2)
 ACTIVITY_ID = 9537
 
 HEADERS = {
