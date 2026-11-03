@@ -1,0 +1,54 @@
+name: reverb-monitor
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"   # every 15 min, off the hour (GitHub may run it late or skip runs when busy)
+  workflow_dispatch:                # allows a manual "Run workflow" button for testing
+    inputs:
+      query:
+        description: "TEST ONLY: override search query (leave blank for a normal check)"
+        required: false
+        default: ""
+
+concurrency:
+  group: reverb-monitor
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      # Test runs (query override set) skip the saved state so they can't disturb the real monitor
+      TEST_RUN: ${{ inputs.query != '' }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      # Runners start empty, so carry reverb_state.json/reverb_log.csv between runs via the Actions cache.
+      # The newest cache matching the prefix is restored.
+      - uses: actions/cache/restore@v5
+        if: env.TEST_RUN == 'false'
+        with:
+          path: |
+            reverb_state.json
+            reverb_log.csv
+          key: reverb-state-${{ github.run_id }}
+          restore-keys: reverb-state-
+
+      - name: Check Reverb listings
+        run: python3 reverb_monitor.py
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          MONITOR_QUERY: ${{ inputs.query }}
+
+      - name: Show recent log
+        if: always()
+        run: tail -n 5 reverb_log.csv || true
+
+      - uses: actions/cache/save@v5
+        if: always() && env.TEST_RUN == 'false'
+        with:
+          path: |
+            reverb_state.json
+            reverb_log.csv
+          key: reverb-state-${{ github.run_id }}-${{ github.run_attempt }}
